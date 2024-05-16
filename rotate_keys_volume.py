@@ -4,8 +4,9 @@ import json
 import csv
 import sys
 import time
+
 config = oci.config.from_file()
-key_ocid=''
+key_ocid='ocid1.key.oc1.iad.bbpi6tfhaaeuk.abuwcljrhqh4t4yaqqnuxysclbbfsjs2iir57puq65bhspylkfuarxvoipca'
 
 def get_volume_info(volume_summary):
     if volume_summary.resource_type == 'BootVolume':
@@ -26,9 +27,9 @@ def update_key(kms_key_id):
 	vault_resp = kms_vault_client.get_vault(vault_id=vaultId).data
 	vault_management_endpoint= vault_resp.management_endpoint        
 	kms_management_client = oci.key_management.KmsManagementClient(config, service_endpoint=vault_management_endpoint)
-	key_info = kms_management_client.get_key(kms_key_id).data
+	key_info = kms_management_client.get_key(kms_key_id).data    
 	new_key_version = kms_management_client.create_key_version(kms_key_id).data
-	print(f"New key is created")
+	print(f"New key version is created for key {key_info.display_name} in vault {vault_resp.display_name}")
 
 def delete_volume_key(volume_id,resource_type):
     if resource_type == 'BootVolume':
@@ -77,7 +78,7 @@ identity_client = oci.identity.IdentityClient(config)
 
 # Create a structured search query
 structured_search = oci.resource_search.models.StructuredSearchDetails(
-    query="query volume resources",
+    query="query bootvolume,volume resources",
     type="Structured",
     matching_context_type=oci.resource_search.models.SearchDetails.MATCHING_CONTEXT_TYPE_NONE
 ) #, resources
@@ -85,16 +86,13 @@ search_response = resource_search_client.search_resources(structured_search)
 
 for resource_summary in search_response.data.items:
     volume_info = get_volume_info(resource_summary)
-    if volume_info.kms_key_id == None:
-        print(f"{volume_info.display_name} is using Oracle Managed Key")
-    else:
+    if volume_info.kms_key_id == key_ocid:
+        compartment_name=identity_client.get_compartment(volume_info.compartment_id).data.name
         kms_key_id = volume_info.kms_key_id
         volume_id=volume_info.id
         resource_type=resource_summary.resource_type
-        print(resource_summary)
+        print(f"Updating {resource_type} {resource_summary.display_name} in {compartment_name} compartment")
         update_key(kms_key_id)
         delete_volume_key(volume_id,resource_type)
-        time.sleep(30)
         update_volume_key(volume_id,kms_key_id,resource_type)
-        
-        sys.exit()
+        print('-'*30)

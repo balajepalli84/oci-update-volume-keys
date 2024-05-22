@@ -83,7 +83,7 @@ structured_search = oci.resource_search.models.StructuredSearchDetails(
     matching_context_type=oci.resource_search.models.SearchDetails.MATCHING_CONTEXT_TYPE_NONE
 ) #, resources
 search_response = resource_search_client.search_resources(structured_search)
-
+update_key(key_ocid)
 for resource_summary in search_response.data.items:
     volume_info = get_volume_info(resource_summary)
     if volume_info.kms_key_id == key_ocid:
@@ -91,8 +91,8 @@ for resource_summary in search_response.data.items:
         kms_key_id = volume_info.kms_key_id
         volume_id=volume_info.id
         resource_type=resource_summary.resource_type
-        print(f"Updating {resource_type} {resource_summary.display_name} in {compartment_name} compartment")
-        update_key(kms_key_id)
-        delete_volume_key(volume_id,resource_type)
+        print(f"Updating {resource_type} {resource_summary.display_name} in {compartment_name} compartment")        
+        #per priduct team update volume key will work even if its the same key operation
+        #delete_volume_key(volume_id,resource_type)
         update_volume_key(volume_id,kms_key_id,resource_type)
         print('-'*30)
